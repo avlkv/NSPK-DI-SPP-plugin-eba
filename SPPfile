@@ -5,11 +5,11 @@
 #	NSPK DI
 
 # указание уникального имени источника
-SOURCE <source name>
+SOURCE eba
 
 # Тут указывается имя файла с парсером
 # PARSER <название файла с парсером без расширения>
-PARSER source_parser
+PARSER eba
 
 # Настройка задачи
 # SETENV <атрибут управления> [<параметры>, ...]
@@ -17,11 +17,11 @@ SETENV LogMode debug
 
 # Настройка интервала перезапуска
 # SET restart-interval { postgresql interval string }
-SET restart-interval 2 days
+# SET restart-interval 2 days
 
 # Этот параметр нужен, если ты имеешь дело с противным источником.
 # BUS_ADD <название дополнительного потока> <объект / модуль / дополнительный модуль из класса парсера>
-BUS_ADD s_download PARSER/SOURCE_PARSER_CLASS/nasty_download
+# BUS_ADD s_download PARSER/SOURCE_PARSER_CLASS/nasty_download
 
 # Этот параметр отвечает за то какие модули долждны быть переданы в класс парсера при его инициализации
 # INIT {key} {module name}
@@ -29,16 +29,20 @@ INIT webdriver WebDriver
 
 # Тут указывается класс парсера и метод, который платформа будет вызывать
 # START <название класса парсера> <метод, который должен вернуть список документов>
-START SOURCE_PARSER_CLASS content
+START EBA content
 
 
 # Такая конфигурация модулей подходит для "файловых противных источников"
 # ADD <название модуля> [<опциональные параметры>, ...]
+ADD CutJunkCharactersFromDocumentText
 ADD FilterOnlyNewDocumentWithDB
 ADD DownloadDocumentsThroughSeleniumTemp
 ADD ExtractTextFromFile
+ADD CutJunkCharactersFromDocumentText
 ADD UploadDocumentToDB
 
 # Такая конфигурация модулей подходит для "Нативных источников"
-ADD FilterOnlyNewDocumentWithDB
-ADD UploadDocumentToDB
+# ADD CutJunkCharactersFromDocumentText
+# ADD FilterOnlyNewDocumentWithDB
+# ADD CutJunkCharactersFromDocumentText
+# ADD UploadDocumentToDB

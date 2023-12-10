@@ -6,11 +6,17 @@
 import logging
 import os
 import time
-
+from selenium.webdriver.common.by import By
 from src.spp.types import SPP_document
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import dateparser
+from datetime import datetime
+import pytz
+from random import uniform
 
 
-class SOURCE_PARSER_CLASS:
+class EBA:
     """
     Класс парсера плагина SPP
 
@@ -22,10 +28,14 @@ class SOURCE_PARSER_CLASS:
 
     """
 
-    SOURCE_NAME = '<unique source name>'
+    SOURCE_NAME = 'eba'
     _content_document: list[SPP_document]
+    HOST = "https://www.abe-eba.eu/publications/"
+    _content_document: list[SPP_document]
+    utc = pytz.UTC
+    date_begin = utc.localize(datetime(2023, 10, 1))
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, webdriver, *args, **kwargs):
         """
         Конструктор класса парсера
 
@@ -34,6 +44,9 @@ class SOURCE_PARSER_CLASS:
         """
         # Обнуление списка
         self._content_document = []
+
+        self.driver = webdriver
+        self.wait = WebDriverWait(self.driver, timeout=20)
 
         # Логер должен подключаться так. Вся настройка лежит на платформе
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -59,14 +72,47 @@ class SOURCE_PARSER_CLASS:
         :rtype:
         """
         # HOST - это главная ссылка на источник, по которому будет "бегать" парсер
-        self.logger.debug(F"Parser enter to {HOST}")
+        self.logger.debug(F"Parser enter to {self.HOST}")
 
         # ========================================
         # Тут должен находится блок кода, отвечающий за парсинг конкретного источника
         # -
 
-        # Логирование найденного документа
-        self.logger.info(self._find_document_text_for_logger(document))
+        self.driver.get("https://www.abe-eba.eu/publications/")  # Открыть страницу со списком RFC в браузере
+        self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.publication')))
+        el_list = self.driver.find_elements(By.XPATH, '//div[contains(@class, \'media-body\')]')
+        # print(f'len(el_list) = {len(el_list)}')
+        for el in el_list:
+            links = el.find_elements(By.TAG_NAME, 'a')
+            web_link = None
+            for link in links:
+                if link.get_attribute('href').endswith('.pdf'):
+                    web_link = link.get_attribute('href')
+                    break
+            if web_link is None:
+                self.logger.debug(f'pdf web link not found, skipping:\n{el.text}')
+
+                continue
+            try:
+                abstract = el.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'small').text
+            except:
+                abstract = ''
+            title = el.find_element(By.TAG_NAME, 'h3').text.replace(abstract, '')
+            pub_date = dateparser.parse(el.find_element(By.TAG_NAME, 'h6').text)
+            document = SPP_document(
+                None,
+                title=title,
+                abstract=abstract if abstract else None,
+                text=None,
+                web_link=web_link,
+                local_link=None,
+                other_data=None,
+                pub_date=pub_date,
+                load_date=None,
+            )
+            # Логирование найденного документа
+            self.logger.info(self._find_document_text_for_logger(document))
+            self._content_document.append(document)
 
         # ---
         # ========================================
@@ -83,52 +129,3 @@ class SOURCE_PARSER_CLASS:
         """
         return f"Find document | name: {doc.title} | link to web: {doc.web_link} | publication date: {doc.pub_date}"
 
-    @staticmethod
-    def some_necessary_method():
-        """
-        Если для парсинга нужен какой-то метод, то его нужно писать в классе.
-
-        Например: конвертация дат и времени, конвертация версий документов и т. д.
-        :return:
-        :rtype:
-        """
-        ...
-
-    @staticmethod
-    def nasty_download(driver, path: str, url: str) -> str:
-        """
-        Метод для "противных" источников. Для разных источника он может отличаться.
-        Но основной его задачей является:
-            доведение driver селениума до файла непосредственно.
-
-            Например: пройти куки, ввод форм и т. п.
-
-        Метод скачивает документ по пути, указанному в driver, и возвращает имя файла, который был сохранен
-        :param driver: WebInstallDriver, должен быть с настроенным местом скачивания
-        :_type driver: WebInstallDriver
-        :param url:
-        :_type url:
-        :return:
-        :rtype:
-        """
-
-        with driver:
-            driver.set_page_load_timeout(40)
-            driver.get(url=url)
-            time.sleep(1)
-
-            # ========================================
-            # Тут должен находится блок кода, отвечающий за конкретный источник
-            # -
-            # ---
-            # ========================================
-
-            # Ожидание полной загрузки файла
-            while not os.path.exists(path + '/' + url.split('/')[-1]):
-                time.sleep(1)
-
-            if os.path.isfile(path + '/' + url.split('/')[-1]):
-                # filename
-                return url.split('/')[-1]
-            else:
-                return ""
