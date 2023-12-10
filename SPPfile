@@ -36,7 +36,7 @@ START EBA content
 # ADD <название модуля> [<опциональные параметры>, ...]
 ADD CutJunkCharactersFromDocumentText
 ADD FilterOnlyNewDocumentWithDB
-ADD DownloadDocumentsThroughSeleniumTemp
+ADD DownloadDocumentsWithDB
 ADD ExtractTextFromFile
 ADD CutJunkCharactersFromDocumentText
 ADD UploadDocumentToDB
